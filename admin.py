@@ -1,10 +1,12 @@
 from flask import request, jsonify
 from db import get_db_connection
 from auth import check_role
+from logger import log_action
 
 def get_all_users():
-	_, error_response, status_code = check_role(['Администратор'])
+	admin_id, error_response, status_code = check_role(['Администратор'])
 	if error_response:
+		log_action(admin_id, 'get_all_users', 'failure', 'Access denied')
 		return error_response, status_code
 
 	conn = get_db_connection()
@@ -26,12 +28,13 @@ def get_all_users():
 		for user in users
 	]
 
+	log_action(admin_id, 'get_all_users', 'success', 'All users retrieved')
 	return jsonify(user_list)
 
-
 def update_user_balance(user_id):
-	_, error_response, status_code = check_role(['Администратор'])
+	admin_id, error_response, status_code = check_role(['Администратор'])
 	if error_response:
+		log_action(admin_id, 'update_user_balance', 'failure', f'Access denied for updating user {user_id}')
 		return error_response, status_code
 
 	data = request.get_json()
@@ -47,18 +50,20 @@ def update_user_balance(user_id):
 	""", (new_balance, user_id))
 
 	if cur.rowcount == 0:
+		log_action(admin_id, 'update_user_balance', 'failure', f'User {user_id} not found')
 		return jsonify({'error': 'Пользователь не найден'}), 404
 
 	conn.commit()
 	cur.close()
 	conn.close()
 
+	log_action(admin_id, 'update_user_balance', 'success', f'Updated balance for user {user_id} to {new_balance}')
 	return jsonify({'message': 'Баланс обновлен'}), 200
 
-
 def get_all_orders():
-	_, error_response, status_code = check_role(['Администратор'])
+	admin_id, error_response, status_code = check_role(['Администратор'])
 	if error_response:
+		log_action(admin_id, 'get_all_orders', 'failure', 'Access denied')
 		return error_response, status_code
 
 	conn = get_db_connection()
@@ -77,14 +82,15 @@ def get_all_orders():
 
 	order_list = [
 		{
-			'order_id': order[0], 
-			'username': order[1], 
-			'total_amount': float(order[2]), 
-			'status': order[3], 
+			'order_id': order[0],
+			'username': order[1],
+			'total_amount': float(order[2]),
+			'status': order[3],
 			'created_at': order[4].strftime('%Y-%m-%d %H:%M:%S')
-		} 
+		}
 		for order in orders
 	]
 
+	log_action(admin_id, 'get_all_orders', 'success', 'All orders retrieved')
 	return jsonify(order_list)
 
